@@ -1,0 +1,122 @@
+Install & configure Zabbix Server & Frontend in Centos 7
+
+-------------Steps to be performed --------------------------
+
+Login to your Redhat machine and install required packages.
+
+Step 1: Configure mysql
+Step 2: Install Zabbix server
+Step 3: Configure apache
+Step 4: Configure database for Zabbix
+Step 5: Disable SELinux and Start Zabbix Server
+Step 6: Start your Zabbix web installer
+Step 7: Check for pre-requeisites
+Step 8: Configure DB Connection
+Step 9: Zabbix server details
+Step 10: Pre-Installation Summary
+Step 11: Install Zabbix
+Step 12: Login to Zabbix
+
+==================================
+IP ADDRESS
+-------------------------
+ec2-user
+
+$ sudo -s
+
+# FOR CENTOS 7
+
+$ rpm -Uvh https://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-release-5.0-1.el7.noarch.rpm
+$ yum clean all
+
+$ yum search zabbix
+
+# Steps for install multiple components + pre
+$ yum -y install yum-utils
+$ yum repolist all
+$ yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+$ yum update
+$ yum install httpd httpd-devel
+$ yum install php php-cli php-common php-devel php-pear php-gd php-mbstring php-mysql php-xml php-bcmath
+
+
+Step 2. Install Zabbix server, frontend, agent 
+$ yum -y install zabbix-server-mysql zabbix-agent zabbix-get zabbix-web-mysql mariadb-server zabbix-java-gateway    
+
+# Enable Red Hat Software Collections - Install Zabbix frontend
+$ yum install centos-release-scl
+
+# Edit file /etc/yum.repos.d/zabbix.repo and enable zabbix-frontend repository.
+[zabbix-frontend]
+...
+enabled=1
+...
+
+# Install Zabbix frontend packages.
+$ yum install zabbix-web-mysql-scl zabbix-apache-conf-scl
+
+$ systemctl start mariadb
+$ systemctl enable mariadb
+$ service httpd start
+$ systemctl enable httpd
+
+# setenforce Permissive
+$ getenforce
+$ setenforce 0
+
+$ systemctl stop firewalld
+$ systemctl disable firewalld
+
+Create initial database
+$ mysql -uroot -p
+password
+mysql> create database zabbix character set utf8 collate utf8_bin;
+mysql> create user zabbix@localhost identified by 'password';
+mysql> grant all privileges on zabbix.* to zabbix@localhost;
+mysql> quit;
+
+$ Import initial schema and data. You will be prompted to enter your newly created password.
+$ zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uzabbix -p zabbix
+
+$ mysql -uroot -p
+password
+mysql> show databases;
+mysql> use zabbix;
+mysql> show tables;
+mysql> quit;
+
+===========================
+CONF FILE INFO
+Zabbix Server - /etc/zabbix/zabbix_server.conf
+Zabbix frontend- /etc/opt/rh/rh-php72/php-fpm.d/zabbix.conf
+LogFile=/var/log/zabbix/zabbix_server.log
+PidFile=/var/run/zabbix/zabbix_server.pid
+
+===========================
+
+# Configure the database for Zabbix server
+# Edit file /etc/zabbix/zabbix_server.conf
+DBPassword=password
+
+# Configure PHP for Zabbix frontend
+# Edit file /etc/opt/rh/rh-php72/php-fpm.d/zabbix.conf, uncomment and set the right timezone for you.
+php_value date.timezone	Asia/Kolkata
+
+Step 6. Start Zabbix server and agent processes
+# Start Zabbix server and agent processes and make it start at system boot:
+$ systemctl restart zabbix-server zabbix-agent httpd rh-php72-php-fpm
+$ systemctl enable zabbix-server zabbix-agent httpd rh-php72-php-fpm
+
+Now your Zabbix server is up and running!
+
+Step 7. Configure Zabbix frontend
+Connect to your newly installed Zabbix frontend: http://server_ip_or_name/zabbix
+http://13.235.79.59/zabbix/setup.php
+Follow steps described. You should see the first screen of the frontend installation wizard.
+
+
+Congratulations! You have successfully installed Zabbix frontend.
+Configuration file "/etc/zabbix/web/zabbix.conf.php" created.
+http://13.235.79.59/zabbix/
+Admin
+zabbix
